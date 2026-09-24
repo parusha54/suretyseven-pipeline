@@ -23,6 +23,30 @@ if not defined DATABASE_URL (
   exit /b 1
 )
 
+if not exist "backend\node_modules" (
+  echo [0/3] Installing backend dependencies...
+  pushd backend
+  call npm install
+  if errorlevel 1 (
+    popd
+    echo ERROR: Failed to install backend dependencies.
+    exit /b 1
+  )
+  popd
+)
+
+if not exist "frontend\node_modules" (
+  echo [0/3] Installing frontend dependencies...
+  pushd frontend
+  call npm install
+  if errorlevel 1 (
+    popd
+    echo ERROR: Failed to install frontend dependencies.
+    exit /b 1
+  )
+  popd
+)
+
 echo [1/3] Starting PostgreSQL database with Docker Compose...
 docker compose up -d db
 if errorlevel 1 (
