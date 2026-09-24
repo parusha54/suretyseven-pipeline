@@ -1,0 +1,29 @@
+# Dependencies
+**/node_modules/
+
+# Build output and test coverage
+**/dist/
+**/coverage/
+
+# Local environment files; keep only the safe templates
+**/.env
+**/.env.*
+!**/.env.example
+
+# Runtime uploads
+/uploads/
+/backend/uploads/
+
+# Test-generated files
+/tests/api-dummy.pdf
+/tests/dummy-test-file.pdf
+/tests/bad.pdf
+/tests/test.txt
+
+# Logs and operating-system files
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
