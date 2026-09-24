@@ -79,53 +79,142 @@ Statuses are UPLOADED, PROCESSING, PROCESSED, FAILED, and VALIDATION_FAILED. Tra
 
 ## Run locally
 
-### 1. Start PostgreSQL
+You need Docker Desktop and Node.js/npm. PostgreSQL runs in Docker; the backend and frontend run locally with Node.js.
 
-From the repository root:
+### Shared setup (do this for either launch method)
 
-    docker compose up -d db
+#### 1. Start PostgreSQL
 
-### 2. Configure and start the backend
+Open a terminal at the repository root—the folder containing `docker-compose.yml`—and make sure Docker Desktop is running. Run:
 
-Create backend/.env with the database URL used by Docker Compose:
+```sh
+docker compose up -d db
+```
 
-    DATABASE_URL="postgresql://postgres:password@localhost:5432/suretyseven?schema=public"
+On the first run, Docker downloads the PostgreSQL image. Wait for the command to finish before continuing.
 
-In PowerShell, start the backend from a terminal. Prisma CLI reads backend/.env, but the Node process also needs DATABASE_URL in its environment:
+#### 2. Create `backend/.env`
 
-    cd backend
-    npm install
-    npx prisma db push
-    $env:DATABASE_URL = "postgresql://postgres:password@localhost:5432/suretyseven?schema=public"
-    npm run dev
+This command creates the actual `backend/.env` file by copying the included example. Run it from the repository root. If `backend/.env` already exists, keep it and skip this command.
 
-The API listens on http://localhost:3000, and the worker starts in the same process.
+PowerShell:
 
-### 3. Start the frontend
+```powershell
+Copy-Item .\backend\.env.example .\backend\.env
+```
 
-In a second terminal:
+macOS/Linux terminal (zsh or bash):
 
-    cd frontend
-    npm install
-    npm run dev
+```sh
+cp backend/.env.example backend/.env
+```
 
-Open http://localhost:5173. Both frontend pages share an Axios client that reads `VITE_API_URL`; it defaults to `http://localhost:3000` for local development. To use a different API host, create `frontend/.env.local` with `VITE_API_URL=http://<host>:3000`, then restart Vite. The Compose configuration starts PostgreSQL only; run the backend and frontend using the commands above.
+The created file should contain this database setting, which is already in `.env.example`:
+
+```ini
+DATABASE_URL="postgresql://postgres:password@localhost:5432/suretyseven?schema=public"
+```
+
+### Choose one way to start the app
+
+#### Option 1: Windows shortcut with `start.bat`
+
+`start.bat` runs on Windows only. From the repository root in PowerShell, run:
+
+```powershell
+.\start.bat
+```
+
+It installs dependencies if either `node_modules` folder is missing, checks that PostgreSQL is ready, applies the Prisma schema, and opens backend and frontend terminal windows. It does **not** run tests. Open http://localhost:5173 when the frontend starts; the API runs at http://localhost:3000.
+
+#### Option 2: Start manually
+
+Use this option on macOS/Linux, or if you prefer to start each server yourself. The PostgreSQL and `backend/.env` steps above apply first.
+
+**Terminal 1 — Backend (PowerShell):** Open the first terminal at the repository root and run:
+
+```powershell
+Set-Location .\backend
+npm install
+$env:DATABASE_URL = "postgresql://postgres:password@localhost:5432/suretyseven?schema=public"
+npx prisma db push
+npm run dev
+```
+
+**Terminal 1 — Backend (macOS/Linux, zsh or bash):** Open the first terminal at the repository root and run:
+
+```sh
+cd backend
+npm install
+export DATABASE_URL="postgresql://postgres:password@localhost:5432/suretyseven?schema=public"
+npx prisma db push
+npm run dev
+```
+
+Leave Terminal 1 running; it hosts the API at http://localhost:3000 and runs the worker.
+
+**Terminal 2 — Frontend (Windows, macOS, or Linux):** Open a second terminal at the repository root, then run:
+
+PowerShell:
+
+```powershell
+Set-Location .\frontend
+npm install
+npm run dev
+```
+
+macOS/Linux terminal:
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+Leave Terminal 2 running and open http://localhost:5173. The frontend defaults to the API at http://localhost:3000. To use another browser-reachable API host, set `VITE_API_URL` in `frontend/.env.local` and restart Vite. Docker Compose starts PostgreSQL only; the backend and frontend run locally.
 
 ## Build and test
 
-Build the backend and frontend:
+Build the backend and frontend from the repository root:
 
-    cd backend
-    npm run build
-    cd ../frontend
-    npm run build
+```sh
+cd backend
+npm run build
+cd ../frontend
+npm run build
+```
 
-Run the backend tests from backend/:
+To try the app manually, start it and upload a PDF in the browser. You do not need to run `npm test` for that. `npm test` runs the automated Jest test suite. The tests create two test document records, so use a dedicated database to keep them out of the demo dashboard. This separate test database is recommended for automated tests; it is not required to upload a PDF and try the app.
 
-    npm test
+With PostgreSQL running, create the test database **once** from the repository root:
 
-Tests use Prisma and write to the database configured by DATABASE_URL. Point it to a dedicated test database. The pipeline suite removes previously tagged test rows before a run and leaves the current run's dummy-test-file.pdf and bad.pdf records visible; temporary test files are removed afterward.
+```sh
+docker compose exec -T db psql -U postgres -c "CREATE DATABASE suretyseven_test;"
+```
 
+If PostgreSQL says `suretyseven_test` already exists, do not create it again. Open a new terminal at the repository root, then run these commands from `backend/`.
+
+PowerShell:
+
+```powershell
+Set-Location .\backend
+$env:DATABASE_URL = "postgresql://postgres:password@localhost:5432/suretyseven_test?schema=public"
+npx prisma db push
+npm test
+Remove-Item Env:DATABASE_URL
+```
+
+macOS/Linux terminal (zsh or bash):
+
+```sh
+cd backend
+export DATABASE_URL="postgresql://postgres:password@localhost:5432/suretyseven_test?schema=public"
+npx prisma db push
+npm test
+unset DATABASE_URL
+```
+
+The pipeline tests clear their tagged records before a run and leave two test document records in the test database. They remove their temporary local test file afterward.
 ## Design notes
 
 - [Decision log](./docs/decision_log.md)
