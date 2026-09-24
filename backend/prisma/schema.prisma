@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  PROCESSED
+  FAILED
+  VALIDATION_FAILED
+}
+
+model Document {
+  id            String              @id @default(uuid())
+  filename      String
+  documentType  String
+  fileHash      String              @unique
+  status        DocumentStatus      @default(UPLOADED)
+  extractedData Json?
+  metadata      Json?               // Optional metadata passed during upload
+  retryCount    Int                 @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  history       ProcessingHistory[]
+
+  @@map("documents")
+  @@index([status]) // CRITICAL PERFORMANCE FIX: Prevents Full Table Scans during Worker polling
+}
+
+model ProcessingHistory {
+  id         String         @id @default(uuid())
+  documentId String
+  status     DocumentStatus
+  reason     String?        // e.g., "PROCESSOR_TIMEOUT", "INVALID_EXTRACTION"
+  createdAt  DateTime       @default(now())
+
+  document   Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("processing_history")
+}
